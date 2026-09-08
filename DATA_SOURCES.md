@@ -74,6 +74,11 @@ Notes:
 
 - Cache the raw JSON response to `data/raw/`. Overpass is a shared free service and repeated
   identical queries are poor practice.
+- The Scotland administrative relation includes the islands, so the response contains
+  competitors on Orkney, Shetland and the Western Isles. Step 2 drops any competitor more
+  than 8 km from the nearest mainland locality, which removes them. Without this, the
+  straight-line nearest-competitor distance for Wick and Thurso is measured to a jeweller in
+  Orkney. See the decisions log in `CLAUDE.md`.
 - Coverage of small retail categories in OSM is uneven. `shop=jewelry` is reasonably well
   mapped in cities and thin in small towns. `shop=gold_buyer` is rarely used and may return
   almost nothing.

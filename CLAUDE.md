@@ -170,6 +170,9 @@ that, stop and report before continuing.
   `data/raw/` so Overpass is not queried repeatedly.
 - OSM coverage for these tags in Scotland may be patchy. Report the count found. If coverage
   looks too thin to be meaningful, stop and escalate rather than quietly proceeding.
+- Drop competitors more than 8 km from the nearest mainland locality (added 2026-09-08, see
+  decisions log). This removes island points (Orkney, Shetland, Western Isles) that would
+  otherwise measure Wick's and Thurso's nearest competitor across open water.
 - For each town, compute straight-line distance to the nearest competitor. Straight-line is
   fine here and should be stated as such.
 - Normalise each of the three inputs to a 0 to 1 range using min-max scaling. Population is
@@ -306,11 +309,11 @@ Update this section at the end of every step. Keep entries to one or two lines.
 |---|---|---|
 | 0 — Setup | Done | Directory structure, requirements.txt, README.md, .gitignore, script stubs created. Nothing installed or fetched. |
 | 1 — Prepare towns | Done | NRS mid-2020 localities. Mainland attribute filter, pop >= 5,000. 174 towns. Age 55+ share from Table 3.2 (locality level, no data-zone fallback needed). towns.gpkg layers: towns (174 points), towns_poly (174 polygons), all_localities (646 mainland points, no threshold, added for Step 3 coverage). EPSG:27700. |
-| 2 — Score towns | Done | 427 OSM competitors (81 pawnbroker, 345 jewelry, 1 gold_buyer) - coverage adequate. Straight-line nearest-competitor distance. Equal 1/3 weights. Population log10 then min-max (escalated change, see decisions log); age and distance min-max on raw values. towns_scored.gpkg has layers towns_scored and competitors, EPSG:27700. |
-| 3 — Isochrones | Done | Top 20 scored towns, 30/45/60 min driving-car bands via ORS, 20 responses cached to data/raw/isochrones/. Key loaded from .env via python-dotenv. Combined 45-min catchment reported two ways: gross 4.29M (86.7% of the 4.95M mainland locality pop) and net of localities that already have a competitor within 2 km, 1.60M (32.4%). isochrones.gpkg layer isochrones (60 polygons), EPSG:27700. |
-| 4 — Build route | Done | Option A route confirmed after review (see decisions log). Top 14 scored towns. ORS distance/duration matrix (cached). Multi-start nearest-neighbour then 2-opt on road distance: 1,301 km -> 1,247 km. Closed loop 1,247 km / 17.3 h. ORS directions geometry independently confirms 1,247 km. Entry point Glasgow (largest in loop). route.gpkg layers route_stops (14) and route_line (1), EPSG:27700. Days 4, 6 and 8 are single long drives (354/189/161 km) into Caithness and Moray - kept, with a caveat, per the review. |
-| 5 — Excel workbook | Done | outputs/scotland_route_analysis.xlsx. Sheets: Town Scores (174 rows), Route Schedule (14 rows + loop-total line), Summary (note only). Accent 1F4E79 header, frozen + autofiltered, explicit widths, number formats, colour scale on Score column only, named ranges TownScores and RouteSchedule, A4 landscape fit-to-width with repeating header. No Table objects. Council area added as a context column on both data sheets. |
-| 6 — Export GIS | Done | outputs/gis/scotroute.gpkg, all EPSG:27700: towns_scored (174 pts), competitors (427 pts), isochrones (60 polys), route_line (1), route_stops (14). No styling. Note: 10 competitor points are on Orkney/Shetland (Scotland admin area query); Wick/Thurso nearest-competitor distance is to an Orkney jeweller (straight-line, conservative). See BACKGROUND limitations. |
+| 2 — Score towns | Done | 411 OSM competitors used (427 fetched, 16 dropped as >8 km offshore - see decisions log). Straight-line nearest-competitor distance. Equal 1/3 weights. Population log10 then min-max (escalated change); age and distance min-max on raw values. Thurso and Wick now score 1st/2nd (nearest competitor on the mainland: 92 and 86 km). towns_scored.gpkg has layers towns_scored and competitors, EPSG:27700. |
+| 3 — Isochrones | Done | Top 20 scored towns, 30/45/60 min driving-car bands via ORS, cached. Key from .env via python-dotenv. Combined 45-min catchment: gross 4.29M (86.8% of the 4.95M mainland locality pop), net of localities with a competitor within 2 km 1.61M (32.5%). isochrones.gpkg layer isochrones (60 polygons), EPSG:27700. |
+| 4 — Build route | Done | Option A route, confirmed after review. Top 14 scored towns. ORS matrix (cached). Multi-start nearest-neighbour then 2-opt on road distance: 1,272 -> 1,236 km. Closed loop 1,236 km / 16.9 h, ORS directions confirms. Entry point Glasgow. route.gpkg layers route_stops (14) and route_line (1), EPSG:27700. Days 3/5/7 are long single drives into Caithness/Moray - kept with a caveat per the review. |
+| 5 — Excel workbook | Done | outputs/scotland_route_analysis.xlsx. Sheets: Town Scores (174), Route Schedule (14 + loop-total line), Summary (note only). Accent 1F4E79 header, frozen + autofiltered, explicit widths, number formats, colour scale on Score column only, named ranges TownScores and RouteSchedule, A4 landscape fit-to-width, repeating header. No Table objects. Council area added as a context column. |
+| 6 — Export GIS | Done | outputs/gis/scotroute.gpkg, all EPSG:27700: towns_scored (174 pts), competitors (411 pts), isochrones (60 polys), route_line (1), route_stops (14). No styling. Offshore competitors already removed in Step 2; a few Bute/Mull/Skye points remain (do not affect scoring - see decisions log). |
 | 7 — QGIS poster | Not started | Manual |
 
 ### Decisions made during the project
@@ -354,6 +357,25 @@ Record any escalated decision here, with the option chosen and a one-line reason
   = 16,020 each, i.e. fully unserved) and that whether the return justifies roughly 700 km
   and two near-dead vehicle-days is a business judgement needing the operator's own margin
   and response data. Weights reverted to 1/3 each; Steps 2, 3, 4 re-run to restore A.
+
+- **Step 2, offshore competitors (2026-09-08).** The Overpass query returns competitors
+  across the whole Scotland administrative area, including the islands. Straight-line
+  distance then measured Wick's and Thurso's nearest competitor to a jeweller in Orkney
+  (86 and 92 km once corrected, but 58 and 43 km to Orkney), a ferry away. Added a filter in
+  `02_score_towns.py`: competitors more than `MAINLAND_MAX_KM` (8 km) from the nearest
+  mainland locality are dropped. The cutoff sits in a wide empty gap in the data (every kept
+  point is within 5 km of a locality, the nearest dropped one about 10 km out). 16 points
+  removed: Shetland (5), Orkney (5), Western Isles (1), Iona (1), Skye (3), one deep-rural.
+  Only Wick and Thurso were affected (their nearest competitor is now on the mainland);
+  their scores moved -0.021 and +0.087 and they swapped 1st/2nd place. Route re-run:
+  1,247 -> 1,236 km, Auchterarder and Lanark replaced by Prestwick and East Kilbride at the
+  14-town cut. Steps 2 to 6 re-run.
+  Residual not fixed: five competitors on Bute, Mull and Skye survive the filter because
+  those islands have NRS localities in kept councils. Only Largs is affected (nearest
+  competitor on Bute, 12.6 km, versus 18.1 km to the mainland) with no rank or route change.
+  Chose Option A: leave it. Removing them would need a hardcoded island-locality list or a
+  coastline dataset, disproportionate to a 5 km shift on one town, and island residents
+  plausibly do travel to mainland stops so island population is not simply out of scope.
 
 - **Step 3, gross vs net catchment (2026-09-08).** Added a second coverage figure: catchment
   population excluding localities that already have a competitor within 2 km

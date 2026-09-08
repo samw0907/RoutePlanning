@@ -3,9 +3,10 @@
 Step 2: Score the candidate towns.
 
 Fetches existing competitor locations (pawnbrokers, jewellers, gold buyers) from
-OpenStreetMap via the Overpass API, measures each town's straight-line distance
-to the nearest competitor, normalises the three scoring inputs to a 0 to 1 range,
-and combines them into a single weighted score.
+OpenStreetMap via the Overpass API, drops any that sit more than MAINLAND_MAX_KM
+offshore (Orkney, Shetland, Western Isles), measures each town's straight-line
+distance to the nearest remaining competitor, normalises the three scoring inputs
+to a 0 to 1 range, and combines them into a single weighted score.
 
 Scoring inputs, all oriented so that a higher normalised value is more attractive:
   - population              log10, then min-max. Larger town, more potential
@@ -49,6 +50,15 @@ WEIGHTS = {
 
 # OSM shop tags treated as existing competitors.
 COMPETITOR_SHOP_TAGS = ["pawnbroker", "jewelry", "gold_buyer"]
+
+# The Overpass query covers the whole Scotland administrative area, so it also
+# returns competitors on Orkney, Shetland and the Western Isles. Those are outside
+# the mainland study area and, measured straight-line, would wrongly pull down the
+# competitor distance for towns such as Wick and Thurso. Any competitor more than
+# this far from the nearest mainland locality is dropped. The cutoff sits in a
+# wide empty gap in the data: every retained point is within 5 km of a locality,
+# the nearest dropped one is about 10 km out.
+MAINLAND_MAX_KM = 8
 
 TARGET_CRS = "EPSG:27700"
 
@@ -132,6 +142,18 @@ def minmax(series):
     return (series - low) / (high - low)
 
 
+def drop_offshore_competitors(competitors, localities):
+    """Remove competitor points more than MAINLAND_MAX_KM from any mainland
+    locality. Returns the kept points and the dropped ones."""
+    nearest = gpd.sjoin_nearest(
+        competitors[["geometry"]], localities[["geometry"]],
+        distance_col="locality_dist_m",
+    )
+    nearest = nearest[~nearest.index.duplicated(keep="first")]
+    on_mainland = nearest["locality_dist_m"] <= MAINLAND_MAX_KM * 1000
+    return competitors[on_mainland.values].copy(), competitors[~on_mainland.values].copy()
+
+
 # --- Main --------------------------------------------------------------------
 
 def main():
@@ -140,12 +162,15 @@ def main():
 
     print("Loading towns")
     towns = gpd.read_file(TOWNS_GPKG, layer="towns")
+    localities = gpd.read_file(TOWNS_GPKG, layer="all_localities")
     print(f"  {len(towns)} towns")
 
     print("Fetching competitor locations from OpenStreetMap")
     competitors = competitors_geodataframe(fetch_competitors())
+    competitors, offshore = drop_offshore_competitors(competitors, localities)
+    print(f"  {len(competitors)} competitor points "
+          f"({len(offshore)} dropped as more than {MAINLAND_MAX_KM} km offshore)")
     counts = competitors["shop"].value_counts()
-    print(f"  {len(competitors)} competitor points")
     for tag in COMPETITOR_SHOP_TAGS:
         print(f"    shop={tag}: {int(counts.get(tag, 0))}")
 
