@@ -291,7 +291,7 @@ Update this section at the end of every step. Keep entries to one or two lines.
 |---|---|---|
 | 0 — Setup | Done | Directory structure, requirements.txt, README.md, .gitignore, script stubs created. Nothing installed or fetched. |
 | 1 — Prepare towns | Done | NRS mid-2020 localities. Mainland attribute filter, pop >= 5,000. 174 towns. Age 55+ share from Table 3.2 (locality level, no data-zone fallback needed). towns.gpkg has layers towns (points) and towns_poly (polygons), EPSG:27700. |
-| 2 — Score towns | Not started | |
+| 2 — Score towns | Done | 427 OSM competitors (81 pawnbroker, 345 jewelry, 1 gold_buyer) - coverage adequate. Straight-line nearest-competitor distance. Min-max on all three inputs, equal 1/3 weights. towns_scored.gpkg has layers towns_scored and competitors, EPSG:27700. Note: population is heavily skewed so min-max leaves its contribution near zero for all but the four cities. |
 | 3 — Isochrones | Not started | |
 | 4 — Build route | Not started | |
 | 5 — Excel workbook | Not started | |
