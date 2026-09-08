@@ -1,5 +1,6 @@
 geopandas
 pandas
+numpy
 requests
 openpyxl
 shapely

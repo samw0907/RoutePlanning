@@ -169,14 +169,19 @@ that, stop and report before continuing.
   looks too thin to be meaningful, stop and escalate rather than quietly proceeding.
 - For each town, compute straight-line distance to the nearest competitor. Straight-line is
   fine here and should be stated as such.
-- Normalise each of the three inputs to a 0 to 1 range using min-max scaling.
+- Normalise each of the three inputs to a 0 to 1 range using min-max scaling. Population is
+  log10-transformed before min-max; age share and competitor distance are min-max on their
+  raw values. This deviation from plain min-max was escalated and agreed on 2026-09-08
+  because population is strongly right-skewed and a plain min-max left it with almost no
+  influence on the ranking. See the decisions log.
 - Combine into a single score with explicit, visible weights. Start with equal weights of
   one third each. Keep the weights in one clearly named constant at the top of the file so
   they are easy to find and change.
 - Output: `data/processed/towns_scored.gpkg` and a printed top 20 table.
 
 Do not add a fourth scoring variable. Do not switch to a more complex normalisation or
-weighting scheme without escalating.
+weighting scheme without escalating. (The log10 step for population is the one agreed
+exception, recorded in the decisions log.)
 
 ### Step 3 — Drive-time coverage (`03_isochrones.py`)
 
@@ -291,7 +296,7 @@ Update this section at the end of every step. Keep entries to one or two lines.
 |---|---|---|
 | 0 — Setup | Done | Directory structure, requirements.txt, README.md, .gitignore, script stubs created. Nothing installed or fetched. |
 | 1 — Prepare towns | Done | NRS mid-2020 localities. Mainland attribute filter, pop >= 5,000. 174 towns. Age 55+ share from Table 3.2 (locality level, no data-zone fallback needed). towns.gpkg has layers towns (points) and towns_poly (polygons), EPSG:27700. |
-| 2 — Score towns | Done | 427 OSM competitors (81 pawnbroker, 345 jewelry, 1 gold_buyer) - coverage adequate. Straight-line nearest-competitor distance. Min-max on all three inputs, equal 1/3 weights. towns_scored.gpkg has layers towns_scored and competitors, EPSG:27700. Note: population is heavily skewed so min-max leaves its contribution near zero for all but the four cities. |
+| 2 — Score towns | Done | 427 OSM competitors (81 pawnbroker, 345 jewelry, 1 gold_buyer) - coverage adequate. Straight-line nearest-competitor distance. Equal 1/3 weights. Population log10 then min-max (escalated change, see decisions log); age and distance min-max on raw values. towns_scored.gpkg has layers towns_scored and competitors, EPSG:27700. |
 | 3 — Isochrones | Not started | |
 | 4 — Build route | Not started | |
 | 5 — Excel workbook | Not started | |
@@ -306,3 +311,20 @@ Record any escalated decision here, with the option chosen and a one-line reason
   localities, above the plan's expected 80 to 120. Chose to keep the 5,000 threshold as a
   locked scope decision and proceed with 174; downstream steps only use the top N, and the
   threshold is a single named constant if it needs revisiting.
+
+- **Step 2, population normalisation (2026-09-08).** Chose Option B: log10-transform
+  population before min-max, leaving age share and competitor distance as plain min-max on
+  raw values. Weights stay equal at one third each.
+  Reason: population across the 174 towns is extremely right-skewed (skewness 7.98; Glasgow
+  632k against a median of 10k). Under plain min-max, 75 percent of towns had a normalised
+  population below 0.02 and only the four cities exceeded 0.2, so the population term did
+  almost no work in the ranking (component-to-score correlation 0.15, versus 0.75 for age
+  and 0.64 for distance; removing population changed only 2 of the top 30 towns). This
+  defeats the stated purpose of population as the main demand proxy. log10 first compares
+  towns by order of magnitude, which is the intended meaning of "larger town, more demand";
+  after the change the population term has the same spread as the other two (std ~0.17) and
+  a score correlation of 0.34. Alternatives considered and rejected: keep as-is and disclose
+  (leaves the main demand measure inert); percentile/rank normalisation of all three (throws
+  away magnitude everywhere, larger departure from the plan); winsorise population at the
+  95th percentile (arbitrary cap point, over-corrects). Change is contained to
+  `02_score_towns.py`; only Step 2 was re-run.

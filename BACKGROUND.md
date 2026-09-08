@@ -110,6 +110,14 @@ an operational convenience, not an optimisation result, and this project reports
 becomes 1. Used here so that three variables measured in different units can be combined into
 a single weighted score. It is simple and transparent, though it is sensitive to outliers.
 
+That outlier sensitivity bites on population, which is strongly right-skewed: Glasgow is
+around sixty times the median town. Applied to raw population it would push almost every
+town to near zero and leave the population input carrying no real weight. Population is
+therefore log10-transformed before min-max, so towns are compared by order of magnitude.
+Age share and competitor distance are not skewed in this way and use plain min-max on their
+raw values. This was an agreed change from the original plan; see the decisions log in
+CLAUDE.md.
+
 ---
 
 ## 4. Why the three chosen scoring variables
@@ -118,7 +126,9 @@ The scoring model deliberately uses only three inputs. Each is a reasonable prox
 a measured driver, and the project should describe them that way.
 
 **Population.** The most direct available measure of potential demand. Larger towns supply
-more potential customers and more potential appointments.
+more potential customers and more potential appointments. Entered into the score on a log10
+scale (see the min-max note above), so the model treats the step from a 5,000-person town
+to a 50,000-person one as larger than the step from 550,000 to 600,000.
 
 **Share aged 55 and over.** Older households are more likely to have accumulated durable
 goods, inherited items and unused possessions. For services whose demand derives from what

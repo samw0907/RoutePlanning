@@ -4,19 +4,26 @@ Step 2: Score the candidate towns.
 
 Fetches existing competitor locations (pawnbrokers, jewellers, gold buyers) from
 OpenStreetMap via the Overpass API, measures each town's straight-line distance
-to the nearest competitor, min-max normalises the three scoring inputs, and
-combines them into a single weighted score.
+to the nearest competitor, normalises the three scoring inputs to a 0 to 1 range,
+and combines them into a single weighted score.
 
-Scoring inputs, all pointing the same way (higher normalised value = more
-attractive):
-  - population              larger town, more potential demand
-  - share aged 55 and over  older age structure, more relevant demand
-  - distance to nearest competitor   further from an existing provider, less
-                                     served. This one is a deliberately rough
-                                     proxy; absence of competitors may signal
-                                     opportunity or simply a thin market.
+Scoring inputs, all oriented so that a higher normalised value is more attractive:
+  - population              log10, then min-max. Larger town, more potential
+                            demand. Population is strongly right-skewed (Glasgow
+                            is about 60 times the median town), so a plain
+                            min-max would bunch every non-city town near zero and
+                            leave population with almost no influence on the
+                            ranking. Taking log10 first compares towns by order
+                            of magnitude, which is the intended meaning of
+                            "larger town, more potential demand".
+  - share aged 55 and over  min-max. Older age structure, more relevant demand.
+  - distance to nearest competitor   min-max. Further from an existing provider,
+                            less served. A deliberately rough proxy: absence of
+                            competitors may signal opportunity or a thin market.
 
 Distance to competitor is straight-line, which is adequate for a screening score.
+The log10 step for population was an escalated change from the original plan; see
+the decisions log in CLAUDE.md.
 
 Source data and licensing: see DATA_SOURCES.md.
 """
@@ -25,6 +32,7 @@ import json
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import requests
 
@@ -146,7 +154,7 @@ def main():
     nearest = nearest[~nearest.index.duplicated(keep="first")]
     towns["comp_dist_m"] = nearest["comp_dist_m"].values
 
-    towns["norm_population"] = minmax(towns["population"])
+    towns["norm_population"] = minmax(np.log10(towns["population"]))
     towns["norm_share_55_plus"] = minmax(towns["share_55_plus"])
     towns["norm_comp_dist"] = minmax(towns["comp_dist_m"])
 
@@ -165,6 +173,7 @@ def main():
 
     print("\n--- Summary ---")
     print(f"Weights: {WEIGHTS}")
+    print("Population normalised on a log10 scale; age and distance min-max on raw values")
     print(
         "Competitor distance (km): "
         f"min {towns['comp_dist_m'].min() / 1000:.1f}, "
