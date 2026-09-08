@@ -290,7 +290,7 @@ Update this section at the end of every step. Keep entries to one or two lines.
 | Step | Status | Notes |
 |---|---|---|
 | 0 — Setup | Done | Directory structure, requirements.txt, README.md, .gitignore, script stubs created. Nothing installed or fetched. |
-| 1 — Prepare towns | Not started | |
+| 1 — Prepare towns | Done | NRS mid-2020 localities. Mainland attribute filter, pop >= 5,000. 174 towns. Age 55+ share from Table 3.2 (locality level, no data-zone fallback needed). towns.gpkg has layers towns (points) and towns_poly (polygons), EPSG:27700. |
 | 2 — Score towns | Not started | |
 | 3 — Isochrones | Not started | |
 | 4 — Build route | Not started | |
@@ -302,4 +302,7 @@ Update this section at the end of every step. Keep entries to one or two lines.
 
 Record any escalated decision here, with the option chosen and a one-line reason.
 
-*(none yet)*
+- **Step 1, town count.** The locked population >= 5,000 threshold yields 174 mainland
+  localities, above the plan's expected 80 to 120. Chose to keep the 5,000 threshold as a
+  locked scope decision and proceed with 174; downstream steps only use the top N, and the
+  threshold is a single named constant if it needs revisiting.
