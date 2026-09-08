@@ -1,0 +1,12 @@
+# Secrets
+.env
+
+# Raw downloaded data, treated as read-only and refetched as needed
+data/raw/
+
+# Python
+__pycache__/
+*.pyc
+
+# Large intermediate files
+data/processed/*.gpkg
