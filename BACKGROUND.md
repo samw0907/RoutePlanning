@@ -161,7 +161,12 @@ Worth stating openly in any write-up.
   reach, net a lower bound on the genuinely underserved population; the true addressable
   market sits between the two.
 - Competitor data comes from OpenStreetMap, which is volunteer-maintained and has uneven
-  coverage of small retail categories.
+  coverage of small retail categories. It covers the whole Scotland administrative area, so
+  a few points sit on the islands. Distance to nearest competitor is straight-line and can
+  cross water: for Wick and Thurso the nearest mapped competitor is a jeweller in Orkney,
+  about 45 to 60 km away in a straight line but a ferry away by road. This makes those two
+  towns look slightly less underserved than a road-distance measure would, so it is a
+  conservative treatment, not one that inflates their scores.
 - Scoring weights are set by judgement, not calibrated against any outcome data.
 - The route treats one stop per day, which is a simplification. Real touring operations make
   multiple short stops per day within an area.
