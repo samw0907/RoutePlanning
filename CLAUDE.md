@@ -60,9 +60,12 @@ git push
 
 Do not execute them. Just print them.
 
-**Never read or create `.env` files.** API keys are managed manually by the project owner.
-When a key is needed, stop and provide clear written instructions on where to obtain it and
-what variable name to set, then wait.
+**Never read, open or display the contents of `.env` files.** This is an assistant
+restriction for security: Claude Code must not view the secrets inside. The scripts
+themselves may load `.env` (via `python-dotenv`) to read a key into the environment. API
+keys are provided by the project owner. When a new key is needed, stop, give written
+instructions on where to obtain it and the variable name to set, then wait. Do not create
+the `.env` file on the owner's behalf.
 
 **Escalate significant decisions.** If anything needs to change materially from this plan
 (scope, data source, method, output format, or anything that would invalidate work already
@@ -195,6 +198,9 @@ exception, recorded in the decisions log.)
   intersect the isochrones with all locality points and sum their populations. State the
   method and its limitation, which is that it counts only urban locality population and
   ignores dispersed rural population.
+  "All locality points" here means the `all_localities` layer written by Step 1: every
+  mainland locality with no population threshold (646 points), not just the 174 shortlisted
+  towns. Step 1 was extended to write this layer.
 - Output: `data/processed/isochrones.gpkg` and a printed coverage figure.
 
 ### Step 4 — Build the route (`04_build_route.py`)
@@ -295,9 +301,9 @@ Update this section at the end of every step. Keep entries to one or two lines.
 | Step | Status | Notes |
 |---|---|---|
 | 0 — Setup | Done | Directory structure, requirements.txt, README.md, .gitignore, script stubs created. Nothing installed or fetched. |
-| 1 — Prepare towns | Done | NRS mid-2020 localities. Mainland attribute filter, pop >= 5,000. 174 towns. Age 55+ share from Table 3.2 (locality level, no data-zone fallback needed). towns.gpkg has layers towns (points) and towns_poly (polygons), EPSG:27700. |
+| 1 — Prepare towns | Done | NRS mid-2020 localities. Mainland attribute filter, pop >= 5,000. 174 towns. Age 55+ share from Table 3.2 (locality level, no data-zone fallback needed). towns.gpkg layers: towns (174 points), towns_poly (174 polygons), all_localities (646 mainland points, no threshold, added for Step 3 coverage). EPSG:27700. |
 | 2 — Score towns | Done | 427 OSM competitors (81 pawnbroker, 345 jewelry, 1 gold_buyer) - coverage adequate. Straight-line nearest-competitor distance. Equal 1/3 weights. Population log10 then min-max (escalated change, see decisions log); age and distance min-max on raw values. towns_scored.gpkg has layers towns_scored and competitors, EPSG:27700. |
-| 3 — Isochrones | Not started | |
+| 3 — Isochrones | Done | Top 20 scored towns, 30/45/60 min driving-car bands via ORS, 20 responses cached to data/raw/isochrones/. Key loaded from .env via python-dotenv. Combined 45-min catchment = 4.29M, 86.7% of the 4.95M mainland locality population. isochrones.gpkg layer isochrones (60 polygons), EPSG:27700. |
 | 4 — Build route | Not started | |
 | 5 — Excel workbook | Not started | |
 | 6 — Export GIS | Not started | |

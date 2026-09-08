@@ -2,5 +2,6 @@ geopandas
 pandas
 numpy
 requests
+python-dotenv
 openpyxl
 shapely

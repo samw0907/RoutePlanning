@@ -7,6 +7,12 @@ population estimates, filters to mainland Scotland localities with a population
 of at least MIN_POPULATION, attaches the share of population aged 55 and over,
 computes a representative point for routing, and writes data/processed/towns.gpkg.
 
+Output layers in towns.gpkg:
+  towns          shortlisted localities (population >= MIN_POPULATION), points
+  towns_poly     the same localities as polygons, for cartography
+  all_localities every mainland locality with no threshold, points. Step 3 sums
+                 these populations inside the drive-time bands.
+
 Source data and licensing: see DATA_SOURCES.md.
 """
 
@@ -135,17 +141,17 @@ def main():
     towns = towns.merge(council, on="locality_code", how="left")
     n_source = len(towns)
 
-    towns = towns[~towns["council_area"].isin(ISLAND_COUNCIL_AREAS)].copy()
-    n_mainland = len(towns)
+    mainland = towns[~towns["council_area"].isin(ISLAND_COUNCIL_AREAS)].copy()
+    n_mainland = len(mainland)
 
-    towns = towns[towns["population"] >= MIN_POPULATION].copy()
+    points, fallbacks = representative_points(mainland.geometry)
+    mainland["rep_point"] = gpd.GeoSeries(points, index=mainland.index, crs=mainland.crs)
+    mainland["share_55_plus"] = mainland["pop_55_plus"] / mainland["population"]
+    mainland = mainland.sort_values("population", ascending=False).reset_index(drop=True)
+
+    # The candidate shortlist: mainland localities above the population threshold.
+    towns = mainland[mainland["population"] >= MIN_POPULATION].copy()
     n_final = len(towns)
-
-    points, fallbacks = representative_points(towns.geometry)
-    towns["rep_point"] = gpd.GeoSeries(points, index=towns.index, crs=towns.crs)
-    towns["share_55_plus"] = towns["pop_55_plus"] / towns["population"]
-
-    towns = towns.sort_values("population", ascending=False).reset_index(drop=True)
 
     town_points = gpd.GeoDataFrame(
         towns[OUT_COLUMNS].copy(), geometry=towns["rep_point"].values, crs=TARGET_CRS
@@ -153,11 +159,17 @@ def main():
     town_polygons = gpd.GeoDataFrame(
         towns[OUT_COLUMNS].copy(), geometry=towns["geometry"].values, crs=TARGET_CRS
     )
+    # Every mainland locality, no threshold. Step 3 sums these populations inside
+    # the drive-time bands to estimate catchment coverage.
+    all_locality_points = gpd.GeoDataFrame(
+        mainland[OUT_COLUMNS].copy(), geometry=mainland["rep_point"].values, crs=TARGET_CRS
+    )
 
     if OUT_GPKG.exists():
         OUT_GPKG.unlink()
     town_points.to_file(OUT_GPKG, layer="towns", driver="GPKG")
     town_polygons.to_file(OUT_GPKG, layer="towns_poly", driver="GPKG")
+    all_locality_points.to_file(OUT_GPKG, layer="all_localities", driver="GPKG")
 
     print("\n--- Summary ---")
     print("Mainland filter: council area attribute filter (DATA_SOURCES.md option 1)")
@@ -165,15 +177,17 @@ def main():
     print(f"After mainland filter: {n_mainland}  "
           f"(removed {n_source - n_mainland} island localities)")
     print(f"After population >= {MIN_POPULATION:,}: {n_final}")
-    print(f"Representative point: centroid for {n_final - fallbacks}, "
-          f"point-on-surface fallback for {fallbacks}")
+    print(f"Representative point: centroid for {n_mainland - fallbacks} of "
+          f"{n_mainland} mainland localities, point-on-surface fallback for {fallbacks}")
     print(f"Population range: {towns['population'].min():,} to "
           f"{towns['population'].max():,}, median {int(towns['population'].median()):,}")
     print(f"55+ share range: {towns['share_55_plus'].min():.1%} to "
           f"{towns['share_55_plus'].max():.1%}")
     print(f"\nWrote {OUT_GPKG}")
-    print(f"  layer 'towns'      {len(town_points)} representative points")
-    print(f"  layer 'towns_poly' {len(town_polygons)} locality polygons")
+    print(f"  layer 'towns'          {len(town_points)} representative points")
+    print(f"  layer 'towns_poly'     {len(town_polygons)} locality polygons")
+    print(f"  layer 'all_localities' {len(all_locality_points)} mainland locality points "
+          f"(for coverage estimation)")
 
     show = ["name", "council_area", "population", "share_55_plus"]
     print("\nTop 10 by population:")

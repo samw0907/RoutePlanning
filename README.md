@@ -54,8 +54,15 @@ python scripts/06_export_gis.py
 ```
 
 An OpenRouteService API key is needed for steps 3 and 4. Sign up at
-https://openrouteservice.org/dev/#/signup and set it as the environment variable
-`ORS_API_KEY`.
+https://openrouteservice.org/dev/#/signup, then provide the key as `ORS_API_KEY`,
+either as an environment variable or on a single line in a `.env` file in the
+project root:
+
+```
+ORS_API_KEY=your_token_here
+```
+
+The `.env` file is git-ignored. The free tier is sufficient for this project.
 
 ## Outputs
 
