@@ -304,7 +304,7 @@ Update this section at the end of every step. Keep entries to one or two lines.
 | 1 — Prepare towns | Done | NRS mid-2020 localities. Mainland attribute filter, pop >= 5,000. 174 towns. Age 55+ share from Table 3.2 (locality level, no data-zone fallback needed). towns.gpkg layers: towns (174 points), towns_poly (174 polygons), all_localities (646 mainland points, no threshold, added for Step 3 coverage). EPSG:27700. |
 | 2 — Score towns | Done | 427 OSM competitors (81 pawnbroker, 345 jewelry, 1 gold_buyer) - coverage adequate. Straight-line nearest-competitor distance. Equal 1/3 weights. Population log10 then min-max (escalated change, see decisions log); age and distance min-max on raw values. towns_scored.gpkg has layers towns_scored and competitors, EPSG:27700. |
 | 3 — Isochrones | Done | Top 20 scored towns, 30/45/60 min driving-car bands via ORS, 20 responses cached to data/raw/isochrones/. Key loaded from .env via python-dotenv. Combined 45-min catchment = 4.29M, 86.7% of the 4.95M mainland locality population. isochrones.gpkg layer isochrones (60 polygons), EPSG:27700. |
-| 4 — Build route | Not started | |
+| 4 — Build route | Done | Top 14 scored towns. ORS distance/duration matrix (cached). Multi-start nearest-neighbour then 2-opt on road distance: 1,301 km -> 1,247 km. Closed loop 1,247 km / 17.3 h. ORS directions geometry independently confirms 1,247 km. Entry point Glasgow (largest in loop). route.gpkg layers route_stops (14) and route_line (1), EPSG:27700. Note: Wick/Thurso/Nairn/Forres score into the top 14, so days 4, 6 and 8 are single long drives (354/189/161 km). |
 | 5 — Excel workbook | Not started | |
 | 6 — Export GIS | Not started | |
 | 7 — QGIS poster | Not started | Manual |
