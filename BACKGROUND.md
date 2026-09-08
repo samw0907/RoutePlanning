@@ -154,6 +154,12 @@ Worth stating openly in any write-up.
 
 - Population is counted at locality level only. Dispersed rural population outside defined
   localities is not captured, so coverage figures understate true reach.
+- The gross catchment figure counts everyone within the drive-time band, including residents
+  of larger towns that already have a competitor on their own high street and are unlikely
+  to travel to a smaller stop for the same service. Step 3 therefore also reports a net
+  figure that excludes localities with a competitor within 2 km. Gross is an upper bound on
+  reach, net a lower bound on the genuinely underserved population; the true addressable
+  market sits between the two.
 - Competitor data comes from OpenStreetMap, which is volunteer-maintained and has uneven
   coverage of small retail categories.
 - Scoring weights are set by judgement, not calibrated against any outcome data.

@@ -38,7 +38,9 @@ import requests
 
 # --- Configuration ---------------------------------------------------------
 
-# Equal weights to start. Kept as one visible constant so they are easy to change.
+# Equal weights. Kept as one visible constant so they are easy to change.
+# A down-weighting of competitor distance was considered and rejected; see the
+# decisions log in CLAUDE.md.
 WEIGHTS = {
     "population": 1 / 3,
     "share_55_plus": 1 / 3,

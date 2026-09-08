@@ -201,7 +201,11 @@ exception, recorded in the decisions log.)
   "All locality points" here means the `all_localities` layer written by Step 1: every
   mainland locality with no population threshold (646 points), not just the 174 shortlisted
   towns. Step 1 was extended to write this layer.
-- Output: `data/processed/isochrones.gpkg` and a printed coverage figure.
+- Report the catchment two ways (added 2026-09-08, see decisions log): gross (everyone
+  within 45 minutes) and net of localities that already have a competitor within 2 km. The
+  net figure avoids crediting a small stop with a nearby city's population when that city is
+  already served. Gross is an upper bound, net a lower bound.
+- Output: `data/processed/isochrones.gpkg` and the printed coverage figures.
 
 ### Step 4 — Build the route (`04_build_route.py`)
 
@@ -303,8 +307,8 @@ Update this section at the end of every step. Keep entries to one or two lines.
 | 0 — Setup | Done | Directory structure, requirements.txt, README.md, .gitignore, script stubs created. Nothing installed or fetched. |
 | 1 — Prepare towns | Done | NRS mid-2020 localities. Mainland attribute filter, pop >= 5,000. 174 towns. Age 55+ share from Table 3.2 (locality level, no data-zone fallback needed). towns.gpkg layers: towns (174 points), towns_poly (174 polygons), all_localities (646 mainland points, no threshold, added for Step 3 coverage). EPSG:27700. |
 | 2 — Score towns | Done | 427 OSM competitors (81 pawnbroker, 345 jewelry, 1 gold_buyer) - coverage adequate. Straight-line nearest-competitor distance. Equal 1/3 weights. Population log10 then min-max (escalated change, see decisions log); age and distance min-max on raw values. towns_scored.gpkg has layers towns_scored and competitors, EPSG:27700. |
-| 3 — Isochrones | Done | Top 20 scored towns, 30/45/60 min driving-car bands via ORS, 20 responses cached to data/raw/isochrones/. Key loaded from .env via python-dotenv. Combined 45-min catchment = 4.29M, 86.7% of the 4.95M mainland locality population. isochrones.gpkg layer isochrones (60 polygons), EPSG:27700. |
-| 4 — Build route | Done | Top 14 scored towns. ORS distance/duration matrix (cached). Multi-start nearest-neighbour then 2-opt on road distance: 1,301 km -> 1,247 km. Closed loop 1,247 km / 17.3 h. ORS directions geometry independently confirms 1,247 km. Entry point Glasgow (largest in loop). route.gpkg layers route_stops (14) and route_line (1), EPSG:27700. Note: Wick/Thurso/Nairn/Forres score into the top 14, so days 4, 6 and 8 are single long drives (354/189/161 km). |
+| 3 — Isochrones | Done | Top 20 scored towns, 30/45/60 min driving-car bands via ORS, 20 responses cached to data/raw/isochrones/. Key loaded from .env via python-dotenv. Combined 45-min catchment reported two ways: gross 4.29M (86.7% of the 4.95M mainland locality pop) and net of localities that already have a competitor within 2 km, 1.60M (32.4%). isochrones.gpkg layer isochrones (60 polygons), EPSG:27700. |
+| 4 — Build route | Done | Option A route confirmed after review (see decisions log). Top 14 scored towns. ORS distance/duration matrix (cached). Multi-start nearest-neighbour then 2-opt on road distance: 1,301 km -> 1,247 km. Closed loop 1,247 km / 17.3 h. ORS directions geometry independently confirms 1,247 km. Entry point Glasgow (largest in loop). route.gpkg layers route_stops (14) and route_line (1), EPSG:27700. Days 4, 6 and 8 are single long drives (354/189/161 km) into Caithness and Moray - kept, with a caveat, per the review. |
 | 5 — Excel workbook | Not started | |
 | 6 — Export GIS | Not started | |
 | 7 — QGIS poster | Not started | Manual |
@@ -334,3 +338,27 @@ Record any escalated decision here, with the option chosen and a one-line reason
   away magnitude everywhere, larger departure from the plan); winsorise population at the
   95th percentile (arbitrary cap point, over-corrects). Change is contained to
   `02_score_towns.py`; only Step 2 was re-run.
+
+- **Post Step 4, route review (2026-09-08).** After seeing the results, reviewed whether to
+  adjust the scoring weights before producing outputs. The optimised route is 1,247 km /
+  17.3 h, of which 61 percent of the driving is the Highland excursion (Thurso, Wick, Nairn,
+  Forres - 34,350 residents between them). Two changes were trialled and re-run end to end:
+  weights 0.40/0.40/0.20 still keep Wick and Thurso in the top 14 and leave the route length
+  unchanged (1,251 km) while making the northern spur a pure there-and-back; weights
+  0.50/0.35/0.15 remove the Highlands entirely (709 km) but revert the shortlist toward a
+  conventional "biggest towns" list, losing the project's analytical angle. There is no
+  middle weighting that drops Caithness while keeping the small-underserved-town character,
+  because competitor distance both surfaces genuine white space and over-rewards remoteness.
+  Decision: keep Option A (equal weights, the original method) unchanged. The write-up will
+  state plainly that Thurso and Wick are genuine but small white space (net catchment = gross
+  = 16,020 each, i.e. fully unserved) and that whether the return justifies roughly 700 km
+  and two near-dead vehicle-days is a business judgement needing the operator's own margin
+  and response data. Weights reverted to 1/3 each; Steps 2, 3, 4 re-run to restore A.
+
+- **Step 3, gross vs net catchment (2026-09-08).** Added a second coverage figure: catchment
+  population excluding localities that already have a competitor within 2 km
+  (`LOCAL_COMPETITOR_M`). Reason: the gross figure counts a large town such as Perth toward
+  the catchment of a nearby small stop even though its residents already have the service
+  locally, overstating the addressable market. Gross is reported as an upper bound, net as a
+  lower bound. Reporting only - does not feed the score or the route. Contained to
+  `03_isochrones.py`.
