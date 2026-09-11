@@ -2,14 +2,18 @@
 
 A small, self-contained geospatial analysis that answers one question:
 
-> If a mobile service operated a two-week touring route across mainland Scotland,
-> which towns should it visit, and in what order?
+> If a mobile precious-metals and valuables buying service operated a two-week touring
+> route across mainland Scotland, which towns should it visit, and in what order?
 
-Mobile touring services park a vehicle in a town for a short scheduled stop, take
-appointments, then move on. Their demand is drawn from a drive-time catchment rather
-than the town itself, so a simple "visit the biggest towns" approach is inadequate.
-This project screens candidate towns on three transparent measures, assesses drive-time
-coverage, and sequences a fortnight-long touring loop.
+Services in this category — often advertised as "we buy your gold" — park a vehicle in
+a town for a short scheduled stop, take appointments, then move on. Demand for this kind
+of service depends on what people already own rather than what they currently need, so
+an older population is a more informative signal than population alone, and pawnbrokers,
+jewellers and gold buyers are the closest thing to direct competition. Because customers
+travel to the vehicle, demand is also drawn from a drive-time catchment rather than the
+town itself, so a simple "visit the biggest towns" approach is inadequate. This project
+screens candidate towns on three transparent measures, assesses drive-time coverage, and
+sequences a fortnight-long touring loop.
 
 ## Scope
 
@@ -17,7 +21,8 @@ coverage, and sequences a fortnight-long touring loop.
 - Candidate towns are National Records of Scotland localities with a population of
   roughly 5,000 or above.
 - Towns are scored on three inputs only: population, share of population aged 55 and
-  over, and straight-line distance to the nearest existing competitor.
+  over (a proxy for accumulated valuables), and straight-line distance to the nearest
+  existing pawnbroker, jeweller or gold buyer.
 - The route is a closed loop with no fixed depot, 14 days, one town per day.
 - Sequencing uses a nearest-neighbour construction followed by a 2-opt improvement pass.
 
