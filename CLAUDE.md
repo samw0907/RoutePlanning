@@ -312,9 +312,9 @@ Update this section at the end of every step. Keep entries to one or two lines.
 | 2 — Score towns | Done | 411 OSM competitors used (427 fetched, 16 dropped as >8 km offshore - see decisions log). Straight-line nearest-competitor distance. Equal 1/3 weights. Population log10 then min-max (escalated change); age and distance min-max on raw values. Thurso and Wick now score 1st/2nd (nearest competitor on the mainland: 92 and 86 km). towns_scored.gpkg has layers towns_scored and competitors, EPSG:27700. |
 | 3 — Isochrones | Done | Top 20 scored towns, 30/45/60 min driving-car bands via ORS, cached. Key from .env via python-dotenv. Combined 45-min catchment: gross 4.29M (86.8% of the 4.95M mainland locality pop), net of localities with a competitor within 2 km 1.61M (32.5%). isochrones.gpkg layer isochrones (60 polygons), EPSG:27700. |
 | 4 — Build route | Done | Option A route, confirmed after review. Top 14 scored towns. ORS matrix (cached). Multi-start nearest-neighbour then 2-opt on road distance: 1,272 -> 1,236 km. Closed loop 1,236 km / 16.9 h, ORS directions confirms. Entry point Glasgow. route.gpkg layers route_stops (14) and route_line (1), EPSG:27700. Days 3/5/7 are long single drives into Caithness/Moray - kept with a caveat per the review. |
-| 5 — Excel workbook | Done | outputs/scotland_route_analysis.xlsx. Sheets: Town Scores (174), Route Schedule (14 + loop-total line), Summary (note only). Accent 1F4E79 header, frozen + autofiltered, explicit widths, number formats, colour scale on Score column only, named ranges TownScores and RouteSchedule, A4 landscape fit-to-width, repeating header. No Table objects. Council area added as a context column. |
-| 6 — Export GIS | Done | outputs/gis/scotroute.gpkg, all EPSG:27700: towns_scored (174 pts), competitors (411 pts), isochrones (60 polys), route_line (1), route_stops (14). No styling. Offshore competitors already removed in Step 2; a few Bute/Mull/Skye points remain (do not affect scoring - see decisions log). |
-| 7 — QGIS poster | Not started | Manual |
+| 5 — Excel workbook | Done | outputs/scotland_route_analysis.xlsx. Sheets: Town Scores (174), Route Schedule (14 + loop-total line), Catchment (477 localities, served/underserved), Summary (note only). Accent 1F4E79 header, frozen + autofiltered, explicit widths, number formats, colour scale on Score column only (Town Scores only), named ranges TownScores, RouteSchedule and CatchmentLocalities, A4 landscape fit-to-width, repeating header. No Table objects. Council area added as a context column. Pivot tables for the Summary sheet are being built manually outside this repo; see the handoff note in the project owner's scratchpad. |
+| 6 — Export GIS | Done | outputs/gis/scotroute.gpkg, all EPSG:27700: towns_scored (174 pts), competitors (411 pts), isochrones (60 polys), route_line (1), route_stops (14), catchment_localities (477 pts). No styling. Offshore competitors already removed in Step 2; a few Bute/Mull/Skye points remain (do not affect scoring - see decisions log). |
+| 7 — QGIS poster | Done (manual) | Four-panel poster built by hand in QGIS, outside this scripted pipeline as planned. Not tracked here in detail. |
 
 ### Decisions made during the project
 
@@ -376,6 +376,22 @@ Record any escalated decision here, with the option chosen and a one-line reason
   Chose Option A: leave it. Removing them would need a hardcoded island-locality list or a
   coastline dataset, disproportionate to a 5 km shift on one town, and island residents
   plausibly do travel to mainland stops so island population is not simply out of scope.
+
+- **Catchment sheet and pipeline reorganisation (2026-09-13).** Added a fourth Excel sheet,
+  "Catchment" (477 localities, served/underserved, Council area, distance to nearest
+  competitor), positioned between Route Schedule and Summary, with named range
+  `CatchmentLocalities`. This is pivot-ready source data for a pivot table the project owner
+  is building manually. Doing so required fixing a pipeline ordering problem: the
+  served/underserved classification only existed as a written output inside
+  `06_export_gis.py`, computed after `05_export_excel.py` already runs, so Step 5 had no way
+  to read it. Checked the code rather than assuming; confirmed Step 3 computes the same
+  gross/net split but only as summary totals, never persists the per-locality table. Moved
+  the classification into `03_isochrones.py`, written once to `data/processed/catchment.gpkg`
+  (layer `catchment_localities`); `05_export_excel.py` and `06_export_gis.py` both read it
+  from there now instead of recomputing it. Verified unchanged after the move: 477
+  localities, 69 served (2,685,470), 408 underserved (1,608,100), summing to the gross
+  4,293,570 already reported by Step 3, and the GIS layer identical in row count, columns
+  and geometry to before the refactor. Steps 3, 5 and 6 re-run; Steps 1, 2 and 4 untouched.
 
 - **Step 3, gross vs net catchment (2026-09-08).** Added a second coverage figure: catchment
   population excluding localities that already have a competitor within 2 km

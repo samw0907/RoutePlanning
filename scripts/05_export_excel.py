@@ -2,9 +2,10 @@
 """
 Step 5: Excel workbook.
 
-Writes outputs/scotland_route_analysis.xlsx with three sheets:
+Writes outputs/scotland_route_analysis.xlsx with four sheets:
   Town Scores     all 174 shortlisted towns, their inputs and scores
   Route Schedule  the 14-day route, one town per day
+  Catchment       localities in the 45-minute catchment, served or underserved
   Summary         intentionally near-empty, for manual pivot tables and charts
 
 Formatting follows CLAUDE.md section 6: a single accent colour on a bold frozen
@@ -29,6 +30,7 @@ OUT_XLSX = Path("outputs/scotland_route_analysis.xlsx")
 
 SCORED_GPKG = PROCESSED_DIR / "towns_scored.gpkg"
 ROUTE_GPKG = PROCESSED_DIR / "route.gpkg"
+CATCHMENT_GPKG = PROCESSED_DIR / "catchment.gpkg"
 
 # One accent colour, used on header rows. ARGB with an explicit opaque alpha so
 # the fill renders solid in LibreOffice as well as Excel.
@@ -130,17 +132,40 @@ def build_route_schedule(ws, stops, loop_km, loop_min):
     return n_rows
 
 
-def build_summary(ws, n_towns, n_stops, loop_km, loop_min, entry_town):
+def build_catchment(ws, catchment):
+    headers = [
+        "Town", "Council area", "Population", "Status",
+        "Distance to nearest competitor (km)",
+    ]
+    ws.append(headers)
+    for _, r in catchment.iterrows():
+        status = "Served" if r["served"] == "served" else "Underserved"
+        ws.append([
+            r["name"], r["council_area"], int(r["population"]), status,
+            r["comp_dist_m"] / 1000,
+        ])
+
+    n_rows = len(catchment)
+    style_data_sheet(
+        ws, n_cols=len(headers), n_rows=n_rows,
+        widths=[24, 22, 12, 14, 20],
+        number_formats={3: "#,##0", 5: "0.0"},
+    )
+    return n_rows
+
+
+def build_summary(ws, n_towns, n_stops, n_catchment, loop_km, loop_min, entry_town):
     ws.column_dimensions["A"].width = 100
     ws["A1"] = "Summary"
     ws["A1"].font = Font(bold=True, size=14)
     lines = [
         "",
         "This sheet is intentionally left mostly blank. Build pivot tables and charts here,",
-        "using the named ranges defined on the other two sheets:",
+        "using the named ranges defined on the other sheets:",
         "",
-        f"    TownScores      all {n_towns} shortlisted towns and their scores  (sheet 'Town Scores')",
-        f"    RouteSchedule   the {n_stops}-day route                            (sheet 'Route Schedule')",
+        f"    TownScores           all {n_towns} shortlisted towns and their scores  (sheet 'Town Scores')",
+        f"    RouteSchedule        the {n_stops}-day route  (sheet 'Route Schedule')",
+        f"    CatchmentLocalities  the {n_catchment} localities inside the 45-minute catchment  (sheet 'Catchment')",
         "",
         "Route: closed loop, one town per day, "
         f"{loop_km:,.0f} km / {loop_min / 60:.1f} h driving. Entry point {entry_town}.",
@@ -160,22 +185,30 @@ def main():
     loop_km = float(line["distance_km"])
     loop_min = float(line["duration_min"])
     entry_town = stops.iloc[0]["name"]
+    catchment = gpd.read_file(CATCHMENT_GPKG, layer="catchment_localities").sort_values(
+        "population", ascending=False
+    )
 
     wb = Workbook()
     ws_scores = wb.active
     ws_scores.title = "Town Scores"
     ws_schedule = wb.create_sheet("Route Schedule")
+    ws_catchment = wb.create_sheet("Catchment")
     ws_summary = wb.create_sheet("Summary")
 
     n_scores = build_town_scores(ws_scores, towns)
     n_schedule = build_route_schedule(ws_schedule, stops, loop_km, loop_min)
-    build_summary(ws_summary, len(towns), len(stops), loop_km, loop_min, entry_town)
+    n_catchment = build_catchment(ws_catchment, catchment)
+    build_summary(ws_summary, len(towns), len(stops), n_catchment, loop_km, loop_min, entry_town)
 
     wb.defined_names["TownScores"] = DefinedName(
         "TownScores", attr_text=f"'Town Scores'!$A$1:$I${n_scores + 1}"
     )
     wb.defined_names["RouteSchedule"] = DefinedName(
         "RouteSchedule", attr_text=f"'Route Schedule'!$A$1:$G${n_schedule + 1}"
+    )
+    wb.defined_names["CatchmentLocalities"] = DefinedName(
+        "CatchmentLocalities", attr_text=f"'Catchment'!$A$1:$E${n_catchment + 1}"
     )
 
     OUT_XLSX.parent.mkdir(parents=True, exist_ok=True)
@@ -184,7 +217,8 @@ def main():
     print(f"Wrote {OUT_XLSX}")
     print(f"  Town Scores    {n_scores} towns")
     print(f"  Route Schedule {n_schedule} days, loop total {loop_km:,.0f} km / {loop_min / 60:.1f} h")
-    print(f"  Summary        note plus named ranges TownScores, RouteSchedule")
+    print(f"  Catchment      {n_catchment} localities")
+    print(f"  Summary        note plus named ranges TownScores, RouteSchedule, CatchmentLocalities")
 
 
 if __name__ == "__main__":

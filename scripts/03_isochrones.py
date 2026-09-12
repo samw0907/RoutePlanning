@@ -18,6 +18,11 @@ Method note: both figures count locality (defined urban area) population only.
 Population living outside any defined locality, i.e. dispersed rural population,
 is not counted.
 
+The classified localities behind these figures are written to
+data/processed/catchment.gpkg (layer catchment_localities), the single source for
+this data. Step 5 (the Excel workbook) and Step 6 (the GIS export) both read it
+from there rather than recomputing it.
+
 Requires an OpenRouteService API key. Set it as ORS_API_KEY, either in your shell
 environment or in a .env file in the project root (loaded automatically here).
 Sign-up: https://openrouteservice.org/dev/#/signup.
@@ -61,6 +66,7 @@ RAW_ISO_DIR = Path("data/raw/isochrones")
 SCORED_GPKG = PROCESSED_DIR / "towns_scored.gpkg"
 TOWNS_GPKG = PROCESSED_DIR / "towns.gpkg"
 OUT_GPKG = PROCESSED_DIR / "isochrones.gpkg"
+CATCHMENT_GPKG = PROCESSED_DIR / "catchment.gpkg"
 
 
 def get_api_key():
@@ -164,7 +170,30 @@ def main():
 
     band = isochrones[isochrones["band_min"] == COVERAGE_BAND_MIN]
     catchment = band.geometry.union_all()
-    n_localities, gross_pop, net_pop = split_population(catchment)
+
+    # The classified locality table behind the gross/net figures. Written out so
+    # Step 5 and Step 6 both read the same data instead of recomputing it.
+    catchment_localities = localities[localities.intersects(catchment)].copy()
+    catchment_localities["served"] = catchment_localities["comp_dist_m"].lt(
+        LOCAL_COMPETITOR_M
+    ).map({True: "served", False: "underserved"})
+    catchment_localities = catchment_localities[
+        ["locality_code", "name", "council_area", "population", "comp_dist_m",
+         "served", "geometry"]
+    ]
+
+    n_localities = len(catchment_localities)
+    n_served = int((catchment_localities["served"] == "served").sum())
+    gross_pop = int(catchment_localities["population"].sum())
+    net_pop = int(
+        catchment_localities.loc[
+            catchment_localities["served"] == "underserved", "population"
+        ].sum()
+    )
+
+    if CATCHMENT_GPKG.exists():
+        CATCHMENT_GPKG.unlink()
+    catchment_localities.to_file(CATCHMENT_GPKG, layer="catchment_localities", driver="GPKG")
 
     per_town_rows = []
     for _, r in band.iterrows():
@@ -195,6 +224,8 @@ def main():
           "genuinely underserved population.")
     print("  Locality population only; dispersed rural population is not counted.")
     print(f"\nWrote {OUT_GPKG} with layer 'isochrones' ({len(isochrones)} polygons)")
+    print(f"Wrote {CATCHMENT_GPKG} with layer 'catchment_localities' "
+          f"({n_localities} localities, {n_served} served, {n_localities - n_served} underserved)")
     print(f"\nPer-town {COVERAGE_BAND_MIN}-minute locality population (gross / net):")
     print(per_town.to_string(index=False))
 
